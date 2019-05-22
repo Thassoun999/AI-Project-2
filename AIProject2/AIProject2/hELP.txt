@@ -1,0 +1,415 @@
+void amountFilledFunc(stateData& initial) {
+	int amountFilledEval = 0;
+	for (int i = 0; i < 9; i++) {
+		for (int j = 0; j < 9; j++) {
+			if (initial.tilesState[i][j].data != 0) {
+				amountFilledEval++;
+			}
+		}
+	}
+
+	initial.amountFilled = amountFilledEval;
+}
+
+
+
+vector<Tile*> minimumRemainingValueHeuristics(stateData& copyInitial) {
+	
+	int miniHeur = INT_MAX;
+	Tile* miniHeurTile = &copyInitial.tilesState[0][0];
+
+
+	//Run this initial check trying to find the minimum remaining values heurstic for each tile, returning the min tile
+	for (int i = 0; i < 9; i++) {
+		for (int j = 0; j < 9; j++) {
+
+			if (copyInitial.tilesState[i][j].data != 0) {
+				continue;
+			}
+
+			if (copyInitial.tilesState[i][j].amountLegal < miniHeur) {
+				miniHeurTile = &copyInitial.tilesState[i][j];
+				miniHeur = copyInitial.tilesState[i][j].amountLegal;
+			}
+
+
+		}
+	}
+
+	vector<Tile*> miniHeurTileVector;
+	miniHeurTileVector.push_back(miniHeurTile);
+
+	//Want to run this check a second time to see if there are any tiles with same MRV value!!
+	for (int i = 0; i < 9; i++) {
+		for (int j = 0; j < 9; j++) {
+			if (copyInitial.tilesState[i][j].data != 0) {
+				continue;
+			}
+
+			if (copyInitial.tilesState[i][j].amountLegal == miniHeur) {
+				//The fact we are here means we need to run Heuristic 2
+				miniHeurTile = &copyInitial.tilesState[i][j];
+				miniHeurTileVector.push_back(miniHeurTile);
+			}
+		}
+	}
+
+
+	return miniHeurTileVector;
+
+
+}
+
+
+//Highest Number of unassigned neighbors!
+Tile* degreeHeuristic(vector<Tile*>& tileToConsider) {
+	int miniHeur = INT_MAX;
+	Tile* miniHeurTile =tileToConsider[0];
+
+
+	//Run this initial check trying to find the minimum degree heuristics for each tile, returning the min tile
+	//This list is obtained from the tiles we got in our first heuristic!! The ties!
+
+	for (size_t i = 0; i < tileToConsider.size(); i++) {
+		if (tileToConsider[i]->data != 0) {
+			continue;
+		}
+
+		if (tileToConsider[i]->degreeHeuristic < miniHeur) {
+			miniHeur = tileToConsider[i]->degreeHeuristic;
+			miniHeurTile = tileToConsider[i];
+		}
+	}
+
+	return miniHeurTile;
+}
+
+//Has a recursive problem! Need to fix, may need to make iterative, save the previous values or something?
+//Maybe that's the approach here, gonna chill and eat and then do Game Programming Tile Maps tonight
+bool forwardChecking(stateData& copyInitial) {
+
+	//Needed for later
+	//bool failure = false;
+	bool reDo = true;
+	while (reDo == true) {
+
+		//stateData copyInitial;
+		//Make copies of our state, that way if we have a failure we can go to the previous iteration of our data
+		//copyInitial.amountFilled = initial.amountFilled;
+		//copyInitial.tilesState = initial.tilesState;
+		reDo = false;
+
+		for (int i = 0; i < 9; i++) {
+			for (int j = 0; j < 9; j++) {
+
+				int amountLegalTemp = 9;
+				int amountDegreeTemp = 0;
+
+				int evalValue = copyInitial.tilesState[i][j].data;
+				if (evalValue != 0) {
+					continue;
+				}
+
+
+				//Col evaluation
+				for (int col = 0; col < 9; col++) {
+					//Find out column discrepencies for filled tiles
+					int colEvalLegal = copyInitial.tilesState[i][col].data;
+					if (colEvalLegal != 0 && (copyInitial.tilesState[i][j].legalValues[colEvalLegal - 1])) {
+						copyInitial.tilesState[i][j].legalValues[colEvalLegal - 1] = false;
+						//Just to state, this will be our MRV evaluation
+						amountLegalTemp -= 1;
+					}
+					else if (colEvalLegal == 0) {
+						//This will be our degree Heurstic Evaluation
+						amountDegreeTemp++;
+					}
+				}
+
+				//Row Evaluation
+				for (int row = 0; row < 9; row++) {
+					//Find out row discrepencies for filled tiles
+					int rowEvalLegal = copyInitial.tilesState[row][j].data;
+					if (rowEvalLegal != 0 && (copyInitial.tilesState[i][j].legalValues[rowEvalLegal - 1])) {
+						copyInitial.tilesState[i][j].legalValues[rowEvalLegal - 1] = false;
+						amountLegalTemp -= 1;
+					}
+					else if (rowEvalLegal == 0) {
+						amountDegreeTemp++;
+					}
+				}
+
+				//Block Evaluation
+
+				//Find the block row and column
+				int blockRow = i / 3;
+				int blockCol = j / 3;
+
+				//Evaluate all 9 blocks, from 1st to 9nth
+				if (blockRow == 0 && blockCol == 0) {
+					for (int row = 0; row < 3; row++) {
+						for (int col = 0; col < 3; col++) {
+							//Find out block discrepencies for filled tiles
+							int blockEvalLegal = copyInitial.tilesState[row][col].data;
+							if (blockEvalLegal != 0 && (copyInitial.tilesState[i][j].legalValues[blockEvalLegal - 1])) {
+								copyInitial.tilesState[i][j].legalValues[blockEvalLegal - 1] = false;
+								amountLegalTemp -= 1;
+							}
+							else if (blockEvalLegal == 0) {
+								amountDegreeTemp++;
+							}
+						}
+					}
+				}
+				else if (blockRow == 0 && blockCol == 1) {
+					for (int row = 0; row < 3; row++) {
+						for (int col = 3; col < 6; col++) {
+							int blockEvalLegal = copyInitial.tilesState[row][col].data;
+							if (blockEvalLegal != 0 && (copyInitial.tilesState[i][j].legalValues[blockEvalLegal - 1])) {
+								copyInitial.tilesState[i][j].legalValues[blockEvalLegal - 1] = false;
+								amountLegalTemp -= 1;
+							}
+							else if (blockEvalLegal == 0) {
+								amountDegreeTemp++;
+							}
+						}
+					}
+				}
+				else if (blockRow == 0 && blockCol == 2) {
+					for (int row = 0; row < 3; row++) {
+						for (int col = 6; col < 9; col++) {
+							int blockEvalLegal = copyInitial.tilesState[row][col].data;
+							if (blockEvalLegal != 0 && (copyInitial.tilesState[i][j].legalValues[blockEvalLegal - 1])) {
+								copyInitial.tilesState[i][j].legalValues[blockEvalLegal - 1] = false;
+								amountLegalTemp -= 1;
+							}
+							else if (blockEvalLegal == 0) {
+								amountDegreeTemp++;
+							}
+						}
+					}
+				}
+				else if (blockRow == 1 && blockCol == 0) {
+					for (int row = 3; row < 6; row++) {
+						for (int col = 0; col < 3; col++) {
+							int blockEvalLegal = copyInitial.tilesState[row][col].data;
+							if (blockEvalLegal != 0 && (copyInitial.tilesState[i][j].legalValues[blockEvalLegal - 1])) {
+								copyInitial.tilesState[i][j].legalValues[blockEvalLegal - 1] = false;
+								amountLegalTemp -= 1;
+							}
+							else if (blockEvalLegal == 0) {
+								amountDegreeTemp++;
+							}
+						}
+					}
+				}
+				else if (blockRow == 1 && blockCol == 1) {
+					for (int row = 3; row < 6; row++) {
+						for (int col = 3; col < 6; col++) {
+							int blockEvalLegal = copyInitial.tilesState[row][col].data;
+							if (blockEvalLegal != 0 && (copyInitial.tilesState[i][j].legalValues[blockEvalLegal - 1])) {
+								copyInitial.tilesState[i][j].legalValues[blockEvalLegal - 1] = false;
+								amountLegalTemp -= 1;
+							}
+							else if (blockEvalLegal == 0) {
+								amountDegreeTemp++;
+							}
+						}
+					}
+				}
+				else if (blockRow == 1 && blockCol == 2) {
+					for (int row = 3; row < 6; row++) {
+						for (int col = 6; col < 9; col++) {
+							int blockEvalLegal = copyInitial.tilesState[row][col].data;
+							if (blockEvalLegal != 0 && (copyInitial.tilesState[i][j].legalValues[blockEvalLegal - 1])) {
+								copyInitial.tilesState[i][j].legalValues[blockEvalLegal - 1] = false;
+								amountLegalTemp -= 1;
+							}
+							else if (blockEvalLegal == 0) {
+								amountDegreeTemp++;
+							}
+						}
+					}
+				}
+				else if (blockRow == 2 && blockCol == 0) {
+					for (int row = 6; row < 9; row++) {
+						for (int col = 0; col < 3; col++) {
+							int blockEvalLegal = copyInitial.tilesState[row][col].data;
+							if (blockEvalLegal != 0 && (copyInitial.tilesState[i][j].legalValues[blockEvalLegal - 1])) {
+								copyInitial.tilesState[i][j].legalValues[blockEvalLegal - 1] = false;
+								amountLegalTemp -= 1;
+							}
+							else if (blockEvalLegal == 0) {
+								amountDegreeTemp++;
+							}
+						}
+					}
+				}
+				else if (blockRow == 2 && blockCol == 1) {
+					for (int row = 6; row < 9; row++) {
+						for (int col = 3; col < 6; col++) {
+							int blockEvalLegal = copyInitial.tilesState[row][col].data;
+							if (blockEvalLegal != 0 && (copyInitial.tilesState[i][j].legalValues[blockEvalLegal - 1])) {
+								copyInitial.tilesState[i][j].legalValues[blockEvalLegal - 1] = false;
+								amountLegalTemp -= 1;
+							}
+							else if (blockEvalLegal == 0) {
+								amountDegreeTemp++;
+							}
+						}
+					}
+				}
+				else if (blockRow == 2 && blockCol == 2) {
+					for (int row = 6; row < 9; row++) {
+						for (int col = 6; col < 9; col++) {
+							int blockEvalLegal = copyInitial.tilesState[row][col].data;
+							if (blockEvalLegal != 0 && (copyInitial.tilesState[i][j].legalValues[blockEvalLegal - 1])) {
+								copyInitial.tilesState[i][j].legalValues[blockEvalLegal - 1] = false;
+								amountLegalTemp -= 1;
+							}
+							else if (blockEvalLegal == 0) {
+								amountDegreeTemp++;
+							}
+						}
+					}
+				}
+
+				//THE ABOVE ARE REPEATS!! PLEASE REFER TO FIRST FEW COMMENTS
+
+				//Check if one more legal values!!! If not we need to assign the value and then REDO forward checking
+				int cccount = 0; //ignore this, not that important, look to remove later
+				if (amountLegalTemp == 1) {
+					//Find out which one is true!
+					for (int newValLegal = 0; newValLegal < 9; newValLegal++) {
+						if (copyInitial.tilesState[i][j].legalValues[newValLegal] == true && cccount == 0) {
+							copyInitial.tilesState[i][j].data = newValLegal + 1;
+							cccount = 1;
+						}
+					}
+
+					reDo = true;
+				}
+
+
+				//If no legal values, we want to RETURN FALSE
+				if (amountLegalTemp <= 0) { 
+					//failure = true;
+					//If failure, remove legal value from it! --> in backtracking
+
+					return false;
+				}
+
+				copyInitial.tilesState[i][j].amountLegal = amountLegalTemp;
+				copyInitial.tilesState[i][j].degreeHeuristic = amountDegreeTemp;
+
+			}
+		}
+
+		//Figure out the code for this portion.
+		/*
+		if (failure == false) {
+			initial.amountFilled = copyInitial.amountFilled;
+			initial.tilesState = copyInitial.tilesState;
+		}
+		else {
+			return false; //Get out
+		}
+		*/
+	}
+
+
+	//Done forward checking with no hassles!
+	return true;
+
+}
+
+void inFile(vector<vector<Tile>>& tileStateVec, string documentName) {
+	ifstream myfile;
+	myfile.open(documentName);
+
+	if (!myfile) {
+		cerr << "Unable to open file datafile.txt";
+		exit(1);   // call system to stop
+	}
+
+	//Copy all our values into our 2D array of Tiles!
+	int value = 0;
+	for (int i = 0; i < 9; i++) {
+		for (int j = 0; j < 9; j++) {
+			myfile >> value;
+			tileStateVec[i][j].data = value;
+			
+		}
+	}
+
+
+	myfile.close();
+}
+
+//Have a helper function to be able to copy everything correctly;
+
+
+//FORWARD CHECKING LAST!
+bool backTracking_helper(stateData& initial, stateData copyInitial) { //Will either return a solution or a failure
+
+	//Base case, don't continue if our entire board is filled up!
+	amountFilledFunc(copyInitial);
+	if (initial.amountFilled == 81) {
+		initial.amountFilled = copyInitial.amountFilled;
+		initial.tilesState = copyInitial.tilesState;
+		return true;
+	}
+
+	//Select an unassigned Tile and from there we want to test a value
+	
+	//Run minimumRemaininValueHeuristics to pick unassigned Tile
+	vector<Tile*> checkVec = minimumRemainingValueHeuristics(copyInitial);
+	Tile* check = &copyInitial.tilesState[0][0];
+	if (checkVec.size() > 1) {
+		//Run degreeHeuristics to pick unassigned Tile since first one failed
+		check = degreeHeuristic(checkVec);
+	}
+	else if(checkVec.size() == 1) {
+		check = checkVec[0];
+	}
+
+	//We picked an unassigned tile!!! We want to assign it a value!
+	bool finalForwardCheck = false;
+	bool finalBackTrackCheck = false;
+
+	for (int valuetoAdd = 0; valuetoAdd < 9; valuetoAdd++) {
+		//Check for consistency! If inconsistent, go to next value!
+		if (check->legalValues[valuetoAdd] == false) {
+			continue;
+		}
+
+		//ASSIGN AND DO A FORWARD CHECK WITH THAT VALUE
+		check->data = valuetoAdd + 1;
+		finalForwardCheck = forwardChecking(copyInitial);
+		if (finalForwardCheck == false) {
+			//remove legal value from the tile
+			check->legalValues[valuetoAdd] = false;	//infinite loop --> how to fix?
+			continue; //Try with next value
+		}
+		//If true we assign it
+		
+		finalBackTrackCheck = backTracking_helper(initial, copyInitial);
+		if (finalBackTrackCheck == true) {
+			return true;
+		}
+
+
+	}
+
+	return false;
+}
+
+bool backTracking(stateData& initial) {
+	stateData copyInitial;
+	copyInitial.amountFilled = initial.amountFilled;
+	copyInitial.tilesState = initial.tilesState;
+	return backTracking_helper(initial, copyInitial);
+}
+
+
+1, 2, 4, 5, 6, 7, 8, 9 (ONLY 3 CAN GO HERE)
