@@ -174,35 +174,6 @@ bool forwardChecking(stateData& copyInitial, TileLegals& legVals) {
 					continue;
 				}
 
-
-				//Col evaluation[colEvalLegal - 1]
-				for (int col = 0; col < 9; col++) {
-					//Find out column discrepencies for filled tiles
-					int colEvalLegal = copyInitial.tilesState[i][col].data;
-					if (colEvalLegal != 0 && (legVals.legalTilez[i][j].legals[colEvalLegal - 1]) == true) {
-						legVals.legalTilez[i][j].legals[colEvalLegal - 1] = false;
-						//Just to state, this will be our MRV evaluation
-						amountLegalTemp -= 1;
-					}
-					else if (colEvalLegal == 0) {
-						//This will be our degree Heurstic Evaluation
-						amountDegreeTemp++;
-					}
-				}
-
-				//Row Evaluation
-				for (int row = 0; row < 9; row++) {
-					//Find out row discrepencies for filled tiles
-					int rowEvalLegal = copyInitial.tilesState[row][j].data;
-					if (rowEvalLegal != 0 && (legVals.legalTilez[i][j].legals[rowEvalLegal - 1]) == true) {
-						legVals.legalTilez[i][j].legals[rowEvalLegal - 1] = false;
-						amountLegalTemp -= 1;
-					}
-					else if (rowEvalLegal == 0) {
-						amountDegreeTemp++;
-					}
-				}
-
 				//Block Evaluation
 
 				
@@ -211,8 +182,6 @@ bool forwardChecking(stateData& copyInitial, TileLegals& legVals) {
 
 				int blockRow = i / 3;
 				int blockCol = j / 3;
-
-				
 
 				//Evaluate all 9 blocks, from 1st to 9nth
 				if (blockRow == 0 && blockCol == 0) {
@@ -343,7 +312,37 @@ bool forwardChecking(stateData& copyInitial, TileLegals& legVals) {
 					}
 				}
 
+
 				//THE ABOVE ARE REPEATS!! PLEASE REFER TO FIRST FEW COMMENTS
+				//What to do given block row and column?
+
+				//Col evaluation[colEvalLegal - 1]
+				for (int col = 0; col < 9; col++) {
+					//Find out column discrepencies for filled tiles
+					int colEvalLegal = copyInitial.tilesState[i][col].data;
+					if (colEvalLegal != 0 && (legVals.legalTilez[i][j].legals[colEvalLegal - 1]) == true) {
+						legVals.legalTilez[i][j].legals[colEvalLegal - 1] = false;
+						//Just to state, this will be our MRV evaluation
+						amountLegalTemp -= 1;
+					}
+					else if (colEvalLegal == 0 && (col / 3 != blockCol)) {
+						//This will be our degree Heurstic Evaluation
+						amountDegreeTemp++;
+					}
+				}
+
+				//Row Evaluation
+				for (int row = 0; row < 9; row++) {
+					//Find out row discrepencies for filled tiles
+					int rowEvalLegal = copyInitial.tilesState[row][j].data;
+					if (rowEvalLegal != 0 && (legVals.legalTilez[i][j].legals[rowEvalLegal - 1]) == true) {
+						legVals.legalTilez[i][j].legals[rowEvalLegal - 1] = false;
+						amountLegalTemp -= 1;
+					}
+					else if (rowEvalLegal == 0 && (row / 3 != blockCol)) {
+						amountDegreeTemp++;
+					}
+				}
 
 				//Check if one more legal values!!! If not we need to assign the value and then REDO forward checking
 				int cccount = 0; //ignore this, not that important, look to remove later
@@ -403,8 +402,8 @@ bool backTracking_helper(stateData& initial, stateData copyInitial, TileLegals l
 	}
 	
 
-	//printBoard(copyInitial);
-	//cout << endl;
+	printBoard(copyInitial);
+	cout << endl;
 
 	//Select an unassigned Tile and from there we want to test a value
 
@@ -520,16 +519,17 @@ int main()
 	vector<vector<Tile>> tileStateVec(9, vector<Tile>(9));
 
 	string documentName;
-	string destinationName;
+	//string destinationName;
 
 	//String inputs are pretty explanatory
+	
 	cout << "Enter a file name with .txt extension: " << endl;
 	cin >> documentName;
 	
-
+	/*
 	cout << "Create a destination name with .txt extension:" << endl;
 	cin >> destinationName;
-
+	*/
 
 	//We are keeping the list of our legal moves for each tile (9x9) in this structure! Each tile can have 9 moves!
 	TileLegals legVals;
@@ -580,6 +580,6 @@ int main()
 		cout << endl;
 	}
 
-	outFile(initial, destinationName);
+	//outFile(initial, destinationName);
 }
 
